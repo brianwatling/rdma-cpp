@@ -22,12 +22,18 @@ public:
     : buffer(NULL), size(0)
     {}
 
-    void* buffer;
+    void* get()
+    {
+        return buffer;
+    }
+
     size_t size;
 private:
     Buffer(void* buffer, size_t size)
     : buffer(buffer), size(size)
     {}
+
+    void* buffer;
 };
 
 class ClientSocket : boost::noncopyable

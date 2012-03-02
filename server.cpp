@@ -13,7 +13,7 @@ int main(int argc, char* argv[])
                 while(1) {
                     rdma::Buffer readPacket = clientSocket->read();
                     rdma::Buffer sendPacket = clientSocket->getWriteBuffer();
-                    memcpy(sendPacket.buffer, readPacket.buffer, readPacket.size);
+                    memcpy(sendPacket.get(), readPacket.get(), readPacket.size);
                     clientSocket->write(sendPacket);
                     clientSocket->returnReadBuffer(readPacket);
                 }

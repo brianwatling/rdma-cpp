@@ -19,7 +19,7 @@ int main(int argc, char* argv[])
         clock_gettime(CLOCK_REALTIME, &nbegin);
         for(int i = 0; i < count; ++i) {
             rdma::Buffer sendPacket = clientSocket.getWriteBuffer();
-            memset(sendPacket.buffer, 'b', sendPacket.size);
+            memset(sendPacket.get(), 'b', sendPacket.size);
             clientSocket.write(sendPacket);
             rdma::Buffer readPacket = clientSocket.read();
             clientSocket.returnReadBuffer(readPacket);
