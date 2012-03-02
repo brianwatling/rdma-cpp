@@ -43,6 +43,8 @@ public:
 
     void write(const Buffer& buffer);
 
+    void write(void* buffer, size_t len);
+
     Buffer read();
 
     void returnReadBuffer(const Buffer& buffer);

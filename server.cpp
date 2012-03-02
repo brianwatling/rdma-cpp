@@ -12,11 +12,10 @@ int main(int argc, char* argv[])
             try {
                 while(1) {
                     rdma::Buffer readPacket = clientSocket->read();
-                    std::cout << "got: " << std::string((const char*)readPacket.buffer, readPacket.size) << std::endl;
-                    clientSocket->returnReadBuffer(readPacket);
                     rdma::Buffer sendPacket = clientSocket->getWriteBuffer();
-                    memset(sendPacket.buffer, 'a', sendPacket.size);
+                    memcpy(sendPacket.buffer, readPacket.buffer, readPacket.size);
                     clientSocket->write(sendPacket);
+                    clientSocket->returnReadBuffer(readPacket);
                 }
             } catch(std::exception& e) {
                 std::cerr << "client exception: " << e.what() << std::endl;

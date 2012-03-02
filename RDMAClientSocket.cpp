@@ -112,10 +112,12 @@ Buffer ClientSocket::getWriteBuffer()
 {
     if(writeBuffers.empty()) {
         struct ibv_wc wc;
-        const int ret = rdma_get_send_comp(clientId, &wc);
-        if(ret <= 0) {
-            throw std::runtime_error(std::string("rdma::ClientSocket::getWriteBuffer() - rdma_get_send_comp failed: ") + getLastErrorMessage());
-        }
+        do {
+            const int ret = rdma_get_send_comp(clientId, &wc);
+            if(ret <= 0) {
+                throw std::runtime_error(std::string("rdma::ClientSocket::getWriteBuffer() - rdma_get_send_comp failed: ") + getLastErrorMessage());
+            }
+        } while(!wc.wr_id);
         return Buffer(reinterpret_cast<void*>(wc.wr_id), packetSize);
     }
     Buffer ret = writeBuffers.front();
@@ -127,7 +129,15 @@ void ClientSocket::write(const Buffer& buffer)
 {
     const int ret = rdma_post_send(clientId, buffer.buffer, buffer.buffer, buffer.size, memoryRegion, 0);
     if(ret) {
-        writeBuffers.push_back(buffer);
+        writeBuffers.push_front(buffer);
+        throw std::runtime_error(std::string("rdma::ClientSocket::write() - rdma_post_send failed: ") + getLastErrorMessage());
+    }
+}
+
+void ClientSocket::write(void* buffer, size_t len)
+{
+    const int ret = rdma_post_send(clientId, NULL, buffer, len, 0, IBV_SEND_INLINE);
+    if(ret) {
         throw std::runtime_error(std::string("rdma::ClientSocket::write() - rdma_post_send failed: ") + getLastErrorMessage());
     }
 }
