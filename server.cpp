@@ -9,6 +9,18 @@ int main(int argc, char* argv[])
 
         while(1) {
             rdma::ClientSocket* clientSocket = serverSocket.accept();
+            try {
+                while(1) {
+                    rdma::Buffer readPacket = clientSocket->read();
+                    std::cout << "got: " << std::string((const char*)readPacket.buffer, readPacket.size) << std::endl;
+                    clientSocket->returnReadBuffer(readPacket);
+                    rdma::Buffer sendPacket = clientSocket->getWriteBuffer();
+                    memset(sendPacket.buffer, 'a', sendPacket.size);
+                    clientSocket->write(sendPacket);
+                }
+            } catch(std::exception& e) {
+                std::cerr << "client exception: " << e.what() << std::endl;
+            }
             delete clientSocket;
         }
     } catch(std::exception& e) {
