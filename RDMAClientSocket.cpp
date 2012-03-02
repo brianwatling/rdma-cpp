@@ -111,14 +111,16 @@ ClientSocket::~ClientSocket()
 Buffer ClientSocket::getWriteBuffer()
 {
     if(writeBuffers.empty()) {
-        struct ibv_wc wc;
-        do {
-            const int ret = rdma_get_send_comp(clientId, &wc);
-            if(ret <= 0) {
-                throw std::runtime_error(std::string("rdma::ClientSocket::getWriteBuffer() - rdma_get_send_comp failed: ") + getLastErrorMessage());
-            }
-        } while(!wc.wr_id);
-        return Buffer(reinterpret_cast<void*>(wc.wr_id), packetSize);
+        struct ibv_wc wc[10];
+        int ret;
+        while(!(ret = ibv_poll_cq(clientId->send_cq, 10, wc))) {}
+        if(ret < 0) {
+            throw std::runtime_error(std::string("rdma::ClientSocket::getWriteBuffer() - ibv_poll_cq failed: ") + getLastErrorMessage());
+        }
+        for(int i = 1; i < ret; ++i) {
+            writeBuffers.push_back(Buffer(reinterpret_cast<void*>(wc[i].wr_id), packetSize));
+        }
+        return Buffer(reinterpret_cast<void*>(wc[0].wr_id), packetSize);
     }
     Buffer ret = writeBuffers.front();
     writeBuffers.pop_front();
@@ -134,22 +136,14 @@ void ClientSocket::write(const Buffer& buffer)
     }
 }
 
-void ClientSocket::write(void* buffer, size_t len)
-{
-    const int ret = rdma_post_send(clientId, NULL, buffer, len, 0, IBV_SEND_INLINE);
-    if(ret) {
-        throw std::runtime_error(std::string("rdma::ClientSocket::write() - rdma_post_send failed: ") + getLastErrorMessage());
-    }
-}
-
 Buffer ClientSocket::read()
 {
     struct ibv_wc wc;
-    const int ret = rdma_get_recv_comp(clientId, &wc);
-    if(ret <= 0) {
-        throw std::runtime_error(std::string("rdma::ClientSocket::read() - rdma_get_recv_comp failed: ") + getLastErrorMessage());
+    int ret;
+    while(!(ret = ibv_poll_cq(clientId->recv_cq, 1, &wc))) {}
+    if(ret < 0) {
+        throw std::runtime_error(std::string("rdma::ClientSocket::read() - ibv_poll_cq failed: ") + getLastErrorMessage());
     }
-
     return Buffer(reinterpret_cast<void*>(wc.wr_id), wc.byte_len);
 }
 
